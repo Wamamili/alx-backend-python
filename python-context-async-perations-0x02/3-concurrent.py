@@ -28,8 +28,8 @@ async def asyncfetcholderusers(db_name="my_database.db"):
 async def fetch_concurrently():
     """Run multiple queries concurrently"""
     all_users, older_users = await asyncio.gather(
-        async_fetch_users(),
-        async_fetch_older_users()
+        asyncfetchusers(),
+        asyncfetcholderusers()
     )
 
     print("All Users:", all_users)
