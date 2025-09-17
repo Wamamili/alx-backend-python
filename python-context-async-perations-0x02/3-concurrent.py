@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Task 2: Concurrent Asynchronous Database Queries
+Concurrent Asynchronous Database Queries
 """
 
 import asyncio
