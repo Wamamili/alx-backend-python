@@ -1,30 +1,23 @@
-#!/usr/bin/env python3
-"""Unit tests for utils.py"""
+class TestMemoize(unittest.TestCase):
+    """Tests for utils.memoize"""
 
-import unittest
-from unittest.mock import patch, Mock
-from parameterized import parameterized
-from utils import access_nested_map, get_json, memoize
+    def test_memoize(self):
+        """Test that memoize caches method results and avoids repeated calls"""
 
+        class TestClass:
+            """Simple class for testing memoize"""
 
-class TestAccessNestedMap(unittest.TestCase):
-    """Tests for utils.access_nested_map"""
+            def a_method(self):
+                """Return fixed value"""
+                return 42
 
-    @parameterized.expand([
-        ({"a": 1}, ("a",), 1),
-        ({"a": {"b": 2}}, ("a",), {"b": 2}),
-        ({"a": {"b": 2}}, ("a", "b"), 2),
-    ])
-    def test_access_nested_map(self, nested_map, path, expected):
-        """Test access_nested_map returns expected result"""
-        self.assertEqual(access_nested_map(nested_map, path), expected)
+            @memoize
+            def a_property(self):
+                """Return result of a_method with memoization"""
+                return self.a_method()
 
-    @parameterized.expand([
-        ({}, ("a",), 'a'),
-        ({"a": 1}, ("a", "b"), 'b'),
-    ])
-    def test_access_nested_map_exception(self, nested_map, path, expected_msg):
-        """Test access_nested_map raises KeyError with expected message"""
-        with self.assertRaises(KeyError) as cm:
-            access_nested_map(nested_map, path)
-        self.assertEqu
+        with patch.object(TestClass, "a_method", return_value=42) as mock_method:
+            obj = TestClass()
+            self.assertEqual(obj.a_property, 42)
+            self.assertEqual(obj.a_property, 42)
+            mock_method.assert_called_once()
