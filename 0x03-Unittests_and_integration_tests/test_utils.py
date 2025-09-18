@@ -1,33 +1,30 @@
 #!/usr/bin/env python3
-"""Unit tests for utils.memoize"""
+"""Unit tests for utils.py"""
 
 import unittest
-from unittest.mock import patch
-from utils import memoize
+from unittest.mock import patch, Mock
+from parameterized import parameterized
+from utils import access_nested_map, get_json, memoize
 
 
-class TestMemoize(unittest.TestCase):
-    """Test case for memoize decorator"""
+class TestAccessNestedMap(unittest.TestCase):
+    """Tests for utils.access_nested_map"""
 
-    def test_memoize(self):
-        class TestClass:
-            def a_method(self):
-                return 42
+    @parameterized.expand([
+        ({"a": 1}, ("a",), 1),
+        ({"a": {"b": 2}}, ("a",), {"b": 2}),
+        ({"a": {"b": 2}}, ("a", "b"), 2),
+    ])
+    def test_access_nested_map(self, nested_map, path, expected):
+        """Test access_nested_map returns expected result"""
+        self.assertEqual(access_nested_map(nested_map, path), expected)
 
-            @memoize
-            def a_property(self):
-                return self.a_method()
-
-        with patch.object(TestClass, "a_method", return_value=42) as mock_method:
-            obj = TestClass()
-
-            # Call twice
-            self.assertEqual(obj.a_property, 42)
-            self.assertEqual(obj.a_property, 42)
-
-            # Ensure a_method called only once
-            mock_method.assert_called_once()
-
-
-if __name__ == "__main__":
-    unittest.main()
+    @parameterized.expand([
+        ({}, ("a",), 'a'),
+        ({"a": 1}, ("a", "b"), 'b'),
+    ])
+    def test_access_nested_map_exception(self, nested_map, path, expected_msg):
+        """Test access_nested_map raises KeyError with expected message"""
+        with self.assertRaises(KeyError) as cm:
+            access_nested_map(nested_map, path)
+        self.assertEqu
