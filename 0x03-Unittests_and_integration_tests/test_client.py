@@ -95,18 +95,16 @@ class TestIntegrationGithubOrgClient(unittest.TestCase):
     def setUpClass(cls):
         """Start patcher for requests.get and mock API responses"""
         cls.get_patcher = patch("requests.get")
-
         mock_get = cls.get_patcher.start()
 
-        # Configure .json() to return the right payload depending on URL
         def side_effect(url):
             if url.endswith("/orgs/google"):
                 return MockResponse(cls.org_payload)
             if url.endswith("/orgs/google/repos"):
                 return MockResponse(cls.repos_payload)
-            return None
+            return MockResponse(None)
 
-        mock_get.side_effect = lambda url: MockResponseFactory(url, side_effect)
+        mock_get.side_effect = side_effect
 
     @classmethod
     def tearDownClass(cls):
@@ -135,12 +133,6 @@ class MockResponse:
 
     def json(self):
         return self._payload
-
-
-def MockResponseFactory(url, side_effect_func):
-    """Factory that returns a MockResponse based on URL"""
-    payload = side_effect_func(url)
-    return MockResponse(payload)
 
 
 if __name__ == "__main__":
