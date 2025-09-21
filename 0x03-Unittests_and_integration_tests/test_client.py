@@ -2,10 +2,16 @@
 """Unit tests and integration tests for client.GithubOrgClient"""
 
 import sys
+import os
 import types
 import unittest
 from unittest.mock import patch, PropertyMock
 from parameterized import parameterized, parameterized_class
+
+# Ensure the directory containing client.py is in sys.path
+current_dir = os.path.dirname(os.path.abspath(__file__))
+if current_dir not in sys.path:
+    sys.path.insert(0, current_dir)
 
 # Provide a stub 'utils' module if it's missing so client.py can import it.
 # This avoids ModuleNotFoundError during test collection.
@@ -19,14 +25,19 @@ if "utils" not in sys.modules:
     utils.get_json = get_json
     sys.modules["utils"] = utils
 
-from client import GithubOrgClient
+try:
+    from client import GithubOrgClient
+except ImportError:
+    # Try relative import if running as a module
+    from .client import GithubOrgClient
+
 from fixtures import (
     org_payload,
     repos_payload,
     expected_repos,
     apache2_repos,
 )
-
+# This file makes the directory a Python package.
 
 class TestGithubOrgClient(unittest.TestCase):
     """Unit tests for GithubOrgClient"""
