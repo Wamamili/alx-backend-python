@@ -1,11 +1,31 @@
 #!/usr/bin/env python3
 """Unit tests and integration tests for client.GithubOrgClient"""
 
+import sys
+import types
 import unittest
 from unittest.mock import patch, PropertyMock
 from parameterized import parameterized, parameterized_class
+
+# Provide a stub 'utils' module if it's missing so client.py can import it.
+# This avoids ModuleNotFoundError during test collection.
+if "utils" not in sys.modules:
+    utils = types.ModuleType("utils")
+
+    def get_json(url):
+        import requests
+        return requests.get(url).json()
+
+    utils.get_json = get_json
+    sys.modules["utils"] = utils
+
 from client import GithubOrgClient
-from fixtures import org_payload, repos_payload, expected_repos, apache2_repos
+from fixtures import (
+    org_payload,
+    repos_payload,
+    expected_repos,
+    apache2_repos,
+)
 
 
 class TestGithubOrgClient(unittest.TestCase):
@@ -49,7 +69,7 @@ class TestGithubOrgClient(unittest.TestCase):
             {"name": "repo3"},
         ]
 
-        with patch("client.get_json", return_value=test_payload) as mock_get_json:
+        with patch("client.get_json", return_value=test_payload) as mock_json:
             with patch.object(
                 GithubOrgClient,
                 "_public_repos_url",
@@ -64,7 +84,7 @@ class TestGithubOrgClient(unittest.TestCase):
 
                 self.assertEqual(result, ["repo1", "repo2", "repo3"])
                 mock_repos_url.assert_called_once()
-                mock_get_json.assert_called_once_with(
+                mock_json.assert_called_once_with(
                     "https://api.github.com/orgs/google/repos"
                 )
 
