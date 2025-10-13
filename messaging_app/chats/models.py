@@ -14,14 +14,10 @@ class User(AbstractUser):
     ]
 
     user_id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    first_name = models.CharField(max_length=30, blank=False)
-    last_name = models.CharField(max_length=30, blank=False)
-    email = models.EmailField(unique=True, blank=False)
-    password_hash = models.CharField(max_length=128, blank=False)
+    email = models.EmailField(unique=True)
     phone_number = models.CharField(max_length=20, null=True, blank=True)
-    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='guest', blank=False)
+    role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='guest')
     created_at = models.DateTimeField(default=timezone.now)
-
 
     # Use password hashing built into Django
     password_hash = models.CharField(max_length=128)
