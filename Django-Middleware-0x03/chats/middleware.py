@@ -84,3 +84,27 @@ class OffensiveLanguageMiddleware:
         if x_forwarded_for:
             return x_forwarded_for.split(",")[0]
         return request.META.get("REMOTE_ADDR")
+
+
+class RolePermissionMiddleware:
+    """
+    Restrict access based on user role.
+    Only users with role 'admin' or 'moderator' can perform certain actions.
+    """
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        restricted_methods = ["PUT", "PATCH", "DELETE"]
+
+        # Only check role for authenticated users
+        if request.user.is_authenticated and request.method in restricted_methods:
+            user_role = getattr(request.user, "role", "user")  # assumes 'role' field exists on user model
+
+            if user_role not in ["admin", "moderator"]:
+                return JsonResponse(
+                    {"error": "Permission denied. Only admins and moderators can perform this action."},
+                    status=403
+                )
+
+        return self.get_response(request)
