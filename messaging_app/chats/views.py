@@ -4,25 +4,22 @@ from rest_framework.decorators import action
 from .models import Conversation, Message
 from .serializers import ConversationSerializer, MessageSerializer
 from .permissions import IsParticipantOfConversation
+from rest_framework import viewsets, permissions, status, filters
+from django_filters.rest_framework import DjangoFilterBackend
+from .filters import MessageFilter, ConversationFilter
+from .pagination import MessagePagination
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for managing Conversations.
-    - List all conversations for the logged-in user
-    - Create new conversations
-    - View a specific conversation and its messages
-    """
     queryset = Conversation.objects.all()
     serializer_class = ConversationSerializer
     permission_classes = [permissions.IsAuthenticated, IsParticipantOfConversation]
-    filter_backends = [filters.SearchFilter]
-    search_fields = ['participants__username', 'participants__email']
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = ConversationFilter
+    search_fields = ['participants__username']
+    ordering_fields = ['created_at']
 
     def get_queryset(self):
-        """
-        Return conversations only for the current authenticated user.
-        """
         user = self.request.user
         return Conversation.objects.filter(participants=user)
 
@@ -54,29 +51,20 @@ class ConversationViewSet(viewsets.ModelViewSet):
 
 
 class MessageViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet for handling Messages.
-    - List all messages for the user's conversations
-    - Create new messages within a conversation
-    - Restrict edits/deletes to the sender
-    """
     queryset = Message.objects.all()
     serializer_class = MessageSerializer
     permission_classes = [permissions.IsAuthenticated, IsParticipantOfConversation]
-    filter_backends = [filters.SearchFilter]
+    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
+    filterset_class = MessageFilter
+    pagination_class = MessagePagination
     search_fields = ['message_body', 'sender__username']
+    ordering_fields = ['sent_at']
 
     def get_queryset(self):
-        """
-        Return only messages from conversations where the user is a participant.
-        """
         user = self.request.user
         return Message.objects.filter(conversation__participants=user)
 
     def perform_create(self, serializer):
-        """
-        Ensure the user is a participant before sending a message.
-        """
         conversation = serializer.validated_data.get('conversation')
         user = self.request.user
 
