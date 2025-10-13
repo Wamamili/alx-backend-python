@@ -1,49 +1,86 @@
-# chats/middleware.py
-import logging
+import time
 from datetime import datetime
-from django.http import HttpResponseForbidden
+from django.http import JsonResponse
+from collections import defaultdict
+import logging
+
+# Configure logging for requests
+logger = logging.getLogger(__name__)
+handler = logging.FileHandler("requests.log")
+formatter = logging.Formatter("%(asctime)s - %(message)s")
+handler.setFormatter(formatter)
+logger.addHandler(handler)
+logger.setLevel(logging.INFO)
+
 
 class RequestLoggingMiddleware:
     """
-    Middleware that logs each user’s request with timestamp, user, and path.
+    Logs each request with timestamp, user, and path.
     """
-
     def __init__(self, get_response):
         self.get_response = get_response
-        # Configure logger
-        self.logger = logging.getLogger(__name__)
-        handler = logging.FileHandler("requests.log")
-        formatter = logging.Formatter('%(message)s')
-        handler.setFormatter(formatter)
-        self.logger.addHandler(handler)
-        self.logger.setLevel(logging.INFO)
 
     def __call__(self, request):
-        # Get user info
-        user = request.user if request.user.is_authenticated else "AnonymousUser"
-        # Log details
-        self.logger.info(f"{datetime.now()} - User: {user} - Path: {request.path}")
+        user = request.user if request.user.is_authenticated else "Anonymous"
+        log_message = f"{datetime.now()} - User: {user} - Path: {request.path}"
+        logger.info(log_message)
+        return self.get_response(request)
 
-        # Continue processing request
-        response = self.get_response(request)
-        return response
 
 class RestrictAccessByTimeMiddleware:
     """
-    Middleware that restricts access to the chat app outside 6PM to 9PM.
-    Returns 403 Forbidden if accessed outside allowed hours.
+    Restrict chat access between 6AM and 9PM only.
     """
-
     def __init__(self, get_response):
         self.get_response = get_response
 
     def __call__(self, request):
         current_hour = datetime.now().hour
-
-        # Allow access only between 18 (6 PM) and 21 (9 PM)
-        if current_hour < 18 or current_hour >= 21:
-            return HttpResponseForbidden(
-                "Access to the chat is restricted outside 6PM–9PM hours."
+        # Restrict between 9PM (21) and 6AM (6)
+        if current_hour >= 21 or current_hour < 6:
+            return JsonResponse(
+                {"error": "Access restricted. Chat is available between 6 AM and 9 PM."},
+                status=403
             )
+        return self.get_response(request)
+
+
+class OffensiveLanguageMiddleware:
+    """
+    Limits number of POST requests (messages) from a single IP to 5 per minute.
+    """
+    request_log = defaultdict(list)
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.method == "POST":
+            ip = self.get_client_ip(request)
+            current_time = time.time()
+
+            # Clean up old entries (older than 60 seconds)
+            self.request_log[ip] = [
+                t for t in self.request_log[ip] if current_time - t < 60
+            ]
+
+            # Check request count
+            if len(self.request_log[ip]) >= 5:
+                return JsonResponse(
+                    {"error": "Rate limit exceeded: Max 5 messages per minute allowed."},
+                    status=403
+                )
+
+            # Record this request timestamp
+            self.request_log[ip].append(current_time)
 
         return self.get_response(request)
+
+    def get_client_ip(self, request):
+        """
+        Extracts the real client IP address.
+        """
+        x_forwarded_for = request.META.get("HTTP_X_FORWARDED_FOR")
+        if x_forwarded_for:
+            return x_forwarded_for.split(",")[0]
+        return request.META.get("REMOTE_ADDR")
