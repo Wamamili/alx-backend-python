@@ -8,6 +8,11 @@ from rest_framework import viewsets, permissions, status, filters
 from django_filters.rest_framework import DjangoFilterBackend
 from .filters import MessageFilter, ConversationFilter
 from .pagination import MessagePagination
+from django.shortcuts import render, get_object_or_404
+from django.views.decorators.cache import cache_page
+from django.contrib.auth.decorators import login_required
+from messaging.models import Message
+from django.contrib.auth.models import User
 
 
 class ConversationViewSet(viewsets.ModelViewSet):
@@ -99,3 +104,23 @@ class MessageViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN
             )
         return super().destroy(request, *args, **kwargs)
+
+
+@cache_page(60)  # Cache this view for 60 seconds
+@login_required
+def conversation_messages(request, username):
+    """Display messages between the logged-in user and another user."""
+    other_user = get_object_or_404(User, username=username)
+
+    # Retrieve all messages between the two users
+    messages = Message.objects.filter(
+        sender__in=[request.user, other_user],
+        receiver__in=[request.user, other_user]
+    ).order_by('timestamp')
+
+    context = {
+        'messages': messages,
+        'other_user': other_user
+    }
+
+    return render(request, 'chats/conversation.html', context)
