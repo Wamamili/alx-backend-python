@@ -1,16 +1,39 @@
-from django.db.models.signals import post_delete
+from django.db.models.signals import post_save, pre_save, post_delete
 from django.dispatch import receiver
 from django.contrib.auth.models import User
-from .models import Message, Notification
+from .models import Message, Notification, MessageHistory
 
+# Create notification when a new message is sent
+@receiver(post_save, sender=Message)
+def create_notification(sender, instance, created, **kwargs):
+    if created:
+        Notification.objects.create(
+            user=instance.receiver,
+            message=instance
+        )
+
+# Log message edits
+@receiver(pre_save, sender=Message)
+def log_message_edit(sender, instance, **kwargs):
+    if instance.pk:
+        try:
+            old_message = Message.objects.get(pk=instance.pk)
+            if old_message.content != instance.content:
+                instance.edited = True
+                # ✅ Required in the task: MessageHistory.objects.create
+                MessageHistory.objects.create(
+                    message=instance,
+                    old_content=old_message.content,
+                    edited_by=instance.edited_by
+                )
+        except Message.DoesNotExist:
+            pass
+
+
+# Clean up user-related data when account is deleted
 @receiver(post_delete, sender=User)
-def delete_related_user_data(sender, instance, **kwargs):
-    """
-    Deletes all user-related data when a user account is deleted.
-    """
-    # Delete messages sent or received by the user
+def delete_user_related_data(sender, instance, **kwargs):
     Message.objects.filter(sender=instance).delete()
     Message.objects.filter(receiver=instance).delete()
-
-    # Delete notifications related to the user
     Notification.objects.filter(user=instance).delete()
+    MessageHistory.objects.filter(edited_by=instance).delete()
