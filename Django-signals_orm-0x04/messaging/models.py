@@ -2,31 +2,37 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.db.models import Prefetch
 
+class UnreadMessagesManager(models.Manager):
+    """Custom manager to retrieve only unread messages for a specific user."""
+    def for_user(self, user):
+        return self.filter(receiver=user, read=False).only('id', 'sender', 'receiver', 'content', 'timestamp')
+
 
 class Message(models.Model):
     sender = models.ForeignKey(User, related_name='sent_messages', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='received_messages', on_delete=models.CASCADE)
     content = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    edited = models.BooleanField(default=False)
-    edited_by = models.ForeignKey(User, null=True, blank=True, related_name='edited_messages', on_delete=models.SET_NULL)
     parent_message = models.ForeignKey('self', null=True, blank=True, related_name='replies', on_delete=models.CASCADE)
+    edited_by = models.ForeignKey(User, null=True, blank=True, related_name='edited_messages', on_delete=models.SET_NULL)
+    read = models.BooleanField(default=False)
+
+    # Custom manager for unread messages
+    objects = models.Manager()  # Default manager
+    unread = UnreadMessagesManager()  # Custom unread messages manager
 
     def __str__(self):
-        if self.parent_message:
-            return f"Reply by {self.sender} to message {self.parent_message.id}"
-        return f"Message from {self.sender} to {self.receiver}"
+        return f"Message from {self.sender.username} to {self.receiver.username}"
 
-    # ✅ Recursive method to fetch all replies in a threaded structure
-    def get_all_replies(self):
-        replies = []
-        for reply in self.replies.all().select_related('sender', 'receiver').prefetch_related('replies'):
-            replies.append(reply)
-            replies.extend(reply.get_all_replies())
-        return replies
 
-    class Meta:
-        ordering = ['timestamp']
+class MessageHistory(models.Model):
+    """Stores previous versions of edited messages."""
+    original_message = models.ForeignKey(Message, related_name='history', on_delete=models.CASCADE)
+    old_content = models.TextField()
+    edited_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"History for Message ID {self.original_message.id} at {self.edited_at}"
 
 
 class Notification(models.Model):
@@ -60,3 +66,7 @@ class MessageManager(models.Manager):
 
 # Attach the optimized manager to Message
 Message.objects = MessageManager()
+
+
+
+
