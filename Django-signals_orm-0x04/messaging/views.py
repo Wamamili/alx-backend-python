@@ -90,3 +90,15 @@ def get_message_thread(request, message_id):
     }
 
     return JsonResponse(thread_data, safe=False)
+
+@login_required
+def unread_inbox(request):
+    """Display only unread messages for the logged-in user."""
+    # Using custom manager and .only() for optimization
+    unread_messages = Message.unread.unread_for_user(request.user)
+
+    context = {
+        "unread_messages": unread_messages
+    }
+    return render(request, "messaging/unread_inbox.html", context)
+
