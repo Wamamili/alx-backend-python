@@ -3,6 +3,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import JsonResponse
 from .models import Message
 from django.db.models import Prefetch
+from django.views.decorators.cache import cache_page
+from django.contrib.auth.models import User
 
 # ✅ Send a message (sender=request.user, includes receiver)
 @login_required
@@ -102,3 +104,23 @@ def unread_inbox(request):
     }
     return render(request, "messaging/unread_inbox.html", context)
 
+
+
+@cache_page(60)  # Cache this view for 60 seconds
+@login_required
+def conversation_messages(request, username):
+    """Display messages between the logged-in user and another user."""
+    other_user = get_object_or_404(User, username=username)
+
+    # Retrieve all messages between the two users
+    messages = Message.objects.filter(
+        sender__in=[request.user, other_user],
+        receiver__in=[request.user, other_user]
+    ).order_by('timestamp')
+
+    context = {
+        'messages': messages,
+        'other_user': other_user
+    }
+
+    return render(request, 'chats/conversation.html', context)
