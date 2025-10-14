@@ -1,16 +1,16 @@
-from django.db.models.signals import post_save
+from django.db.models.signals import post_delete
 from django.dispatch import receiver
+from django.contrib.auth.models import User
 from .models import Message, Notification
 
+@receiver(post_delete, sender=User)
+def delete_related_user_data(sender, instance, **kwargs):
+    """
+    Deletes all user-related data when a user account is deleted.
+    """
+    # Delete messages sent or received by the user
+    Message.objects.filter(sender=instance).delete()
+    Message.objects.filter(receiver=instance).delete()
 
-@receiver(post_save, sender=Message)
-def create_notification(sender, instance, created, **kwargs):
-    """
-    Automatically creates a Notification for the receiver
-    whenever a new Message is created.
-    """
-    if created:
-        Notification.objects.create(
-            user=instance.receiver,
-            message=instance
-        )
+    # Delete notifications related to the user
+    Notification.objects.filter(user=instance).delete()
