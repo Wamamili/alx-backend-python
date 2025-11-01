@@ -11,7 +11,8 @@ services:
       - MYSQL_USER=${MYSQL_USER}
       - MYSQL_PASSWORD=${MYSQL_PASSWORD}
     ports:
-      - "3307:3306"   # Map container port 3306 to host port 3307
+      - "3307:3306"
+    # ✅ Persist MySQL data using named volume
     volumes:
       - db_data:/var/lib/mysql
 
@@ -26,5 +27,6 @@ services:
       - db
     env_file: .env
 
+# ✅ Define named volume for persistence
 volumes:
   db_data:
