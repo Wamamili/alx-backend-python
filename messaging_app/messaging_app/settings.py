@@ -111,12 +111,19 @@ WSGI_APPLICATION = 'messaging_app.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+import os
+
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': 'django.db.backends.mysql',
+        'NAME': os.getenv('MYSQL_DATABASE', 'messaging_db'),
+        'USER': os.getenv('MYSQL_USER', 'root'),
+        'PASSWORD': os.getenv('MYSQL_PASSWORD', '890532488'),
+        'HOST': os.getenv('MYSQL_HOST', 'wamamili'),  # Docker service name, not 127.0.0.1
+        'PORT': os.getenv('MYSQL_PORT', '3306'),
     }
 }
+
 
 
 # Password validation
