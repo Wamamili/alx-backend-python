@@ -1,0 +1,11 @@
+# Enable Ingress controller
+minikube addons enable ingress
+
+# Apply Ingress configuration
+kubectl apply -f ingress.yaml
+
+# Verify Ingress setup
+kubectl get ingress
+
+# Get Minikube IP to access the app
+minikube ip
