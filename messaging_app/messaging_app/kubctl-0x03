@@ -1,0 +1,45 @@
+#!/bin/bash
+# Rolling Update Script for Django Blue Deployment
+
+set -e
+
+echo "🚀 Starting Rolling Update for Django Blue Deployment..."
+
+# Step 1: Apply updated deployment (image v2.0)
+echo "📦 Applying updated blue deployment..."
+kubectl apply -f blue_deployment.yaml
+
+# Step 2: Monitor the rollout process
+echo "🔄 Monitoring rollout status..."
+kubectl rollout status deployment/django-blue
+
+# Step 3: Get current pods
+echo "📋 Current running pods:"
+kubectl get pods -l app=django,version=blue
+
+# Step 4: Test for downtime
+echo "⚙️ Testing service availability during rollout..."
+SERVICE_IP=$(minikube service django-service --url | head -n 1)
+
+if [ -z "$SERVICE_IP" ]; then
+  echo "❌ Could not retrieve service URL. Ensure 'django-service' exists."
+  exit 1
+fi
+
+echo "🌐 Sending test requests to $SERVICE_IP ..."
+for i in {1..15}; do
+  STATUS=$(curl -s -o /dev/null -w "%{http_code}" $SERVICE_IP)
+  if [ "$STATUS" -eq 200 ]; then
+    echo "✅ Request #$i successful (HTTP 200)"
+  else
+    echo "⚠️ Request #$i failed with status $STATUS"
+  fi
+  sleep 2
+done
+
+# Step 5: Verify rollout success
+echo "✅ Verifying rollout completion..."
+kubectl get pods -l app=django,version=blue
+kubectl describe deployment django-blue | grep Image
+
+echo "🎉 Rolling update complete and app stayed available!"

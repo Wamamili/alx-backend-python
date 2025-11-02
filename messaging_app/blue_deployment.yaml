@@ -11,6 +11,11 @@ spec:
     matchLabels:
       app: django
       version: blue
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
   template:
     metadata:
       labels:
@@ -19,7 +24,7 @@ spec:
     spec:
       containers:
         - name: django-blue
-          image: your-django-app:blue
+          image: your-django-app:2.0   # ✅ Updated to version 2.0
           ports:
             - containerPort: 8000
           env:
